@@ -18,15 +18,29 @@ document.addEventListener("DOMContentLoaded", () => {
         const activityCard = document.createElement("div");
         activityCard.className = "activity-card";
 
-        const spotsLeft = details.max_participants - details.participants.length;
+        const participantCount = details.participants.length;
+        const spotsAvailable = details.max_participants - participantCount;
 
-        activityCard.innerHTML = `
+        let html = `
           <h4>${name}</h4>
-          <p>${details.description}</p>
+          <p><strong>Description:</strong> ${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
-          <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          <p><strong>Available Spots:</strong> ${spotsAvailable} of ${details.max_participants}</p>
         `;
 
+        // Add participants list
+        if (details.participants.length > 0) {
+          html += `
+            <div class="participants-list">
+              <h5>Participants (${details.participants.length})</h5>
+              <ul>
+                ${details.participants.map(email => `<li>${email}</li>`).join('')}
+              </ul>
+            </div>
+          `;
+        }
+
+        activityCard.innerHTML = html;
         activitiesList.appendChild(activityCard);
 
         // Add option to select dropdown
@@ -46,41 +60,38 @@ document.addEventListener("DOMContentLoaded", () => {
     event.preventDefault();
 
     const email = document.getElementById("email").value;
-    const activity = document.getElementById("activity").value;
+    const activityName = document.getElementById("activity").value;
+    const messageDiv = document.getElementById("message");
 
     try {
       const response = await fetch(
-        `/activities/${encodeURIComponent(activity)}/signup?email=${encodeURIComponent(email)}`,
+        `/activities/${encodeURIComponent(activityName)}/signup?email=${encodeURIComponent(email)}`,
         {
           method: "POST",
         }
       );
 
-      const result = await response.json();
+      const data = await response.json();
 
       if (response.ok) {
-        messageDiv.textContent = result.message;
-        messageDiv.className = "success";
+        messageDiv.className = "message success";
+        messageDiv.textContent = data.message;
+        messageDiv.classList.remove("hidden");
         signupForm.reset();
+        fetchActivities(); // Reload activities to show updated participants
       } else {
-        messageDiv.textContent = result.detail || "An error occurred";
-        messageDiv.className = "error";
+        messageDiv.className = "message error";
+        messageDiv.textContent = data.detail;
+        messageDiv.classList.remove("hidden");
       }
-
-      messageDiv.classList.remove("hidden");
-
-      // Hide message after 5 seconds
-      setTimeout(() => {
-        messageDiv.classList.add("hidden");
-      }, 5000);
     } catch (error) {
-      messageDiv.textContent = "Failed to sign up. Please try again.";
-      messageDiv.className = "error";
-      messageDiv.classList.remove("hidden");
       console.error("Error signing up:", error);
+      messageDiv.className = "message error";
+      messageDiv.textContent = "An error occurred. Please try again.";
+      messageDiv.classList.remove("hidden");
     }
   });
 
-  // Initialize app
+  // Load activities on page load
   fetchActivities();
 });
